@@ -1,11 +1,11 @@
 <?php
 /*
  Plugin Name: Prometheus
- Plugin URI: http://awesomelypopularplugin.com
- description: A plugin that records post views and contains functions to easily list posts by popularity
- Version: 1.0
- Author: Mr. Awesome
- Author URI: http://mayawesomefillyourbelly.com
+ Plugin URI: https://github.com/dannykopping/wp_prometheus
+ description: An experiment
+ Version: 0.0.1
+ Author: Danny Kopping, Malcolm Holmes
+ Author URI: http://grafana.com
  License: GPL2
  */
 
