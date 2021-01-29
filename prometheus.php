@@ -98,7 +98,7 @@ class Prometheus
         }
     }
 
-    public function processPost()
+    public function processPost($content)
     {
         global $wp_query;
         $post = $wp_query->post;
@@ -106,6 +106,8 @@ class Prometheus
         if (is_single()) {
             $this->postViewCounter->inc(['post_title' => $post->post_title, 'post_id' => $post->ID]);
         }
+
+        return $content;
     }
 
     public function processComment(int $commentID, $commentApproved, array $commentData)
