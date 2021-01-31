@@ -49,9 +49,9 @@ class Prometheus
     private function createRegistry(): CollectorRegistry
     {
         $registry = new CollectorRegistry(new APC());
-        $this->postViewCounter = $registry->registerCounter('prometheus', 'post_view', 'when a post is viewed', ['post_title', 'post_id']);
-        $this->postCommentCounter = $registry->registerCounter('prometheus', 'post_comment_submitted', 'when a comment is submitted', ['post_id', 'status']);
-        $this->postCounter = $registry->registerGauge('prometheus', 'post_count', 'count of posts in various statuses', ['status']);
+        $this->postViewCounter = $registry->getOrRegisterCounter('wordpress', 'post_view_count', 'when a post is viewed', ['post_title', 'post_id']);
+        $this->postCommentCounter = $registry->getOrRegisterCounter('wordpress', 'post_comment_submitted', 'when a comment is submitted', ['post_id', 'status']);
+        $this->postCounter = $registry->getOrRegisterGauge('wordpress', 'post_count', 'count of posts in various statuses', ['status']);
 
         return $registry;
     }
@@ -60,14 +60,14 @@ class Prometheus
     {
         add_action('the_content', [$this, 'processPost']);
         add_action('comment_post', [$this, 'processComment'], 10, 3);
-        add_action('rest_api_init', [$this, 'api']);
 
         // cron
         add_filter('cron_schedules', [$this, 'addShortCronInterval']);
         if (!wp_next_scheduled('metrics_hook')) {
             wp_schedule_event(time(), 'five_seconds', 'metrics_hook');
-        }
-        add_action('metrics_hook', [$this, 'getPostStatusesMetric']);
+	}
+	add_action('init', [$this, 'renderMetrics']);
+	add_action('metrics_hook', [$this, 'getPostStatusesMetric']);
     }
 
     function addShortCronInterval($schedules)
@@ -105,9 +105,8 @@ class Prometheus
 
         if (is_single()) {
             $this->postViewCounter->inc(['post_title' => $post->post_title, 'post_id' => $post->ID]);
-        }
-
-        return $content;
+	}
+	return $content;
     }
 
     public function processComment(int $commentID, $commentApproved, array $commentData)
@@ -120,29 +119,16 @@ class Prometheus
         $this->postCommentCounter->inc(['post_id' => $postId, 'status' => $commentApproved]);
     }
 
-    public function api()
-    {
-        register_rest_route('prometheus', '/metrics', array(
-            'methods' => 'GET',
-            'callback' => [$this, 'renderMetrics'],
-            'permission_callback' => '__return_true',
-        ));
-    }
-
     public function renderMetrics()
     {
-        $renderer = new RenderTextFormat();
-        $result = $renderer->render(static::getInstance()->registry->getMetricFamilySamples());
-
-        $response = new WP_REST_Response();
-        $response->header('Content-Type', RenderTextFormat::MIME_TYPE);
-
-        // couldn't figure out how to have WP print the _raw_ value, so just echo-ing
-        echo $result;
-
-        return $response;
+	$url_path = trim(parse_url(add_query_arg(array()), PHP_URL_PATH), '/');
+	if ($url_path == "metrics") {
+	    header("Content-type: text/plain");
+            $renderer = new RenderTextFormat();
+	    echo $renderer->render(static::getInstance()->registry->getMetricFamilySamples());
+	    exit();
+        }
     }
 }
-
 // init
 Prometheus::getInstance();
