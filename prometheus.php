@@ -103,7 +103,7 @@ class Prometheus
         global $wp_query;
         $post = $wp_query->post;
 
-        if (is_single()) {
+	if (is_single() || is_page()) {
             $this->postViewCounter->inc(['post_title' => $post->post_title, 'post_id' => $post->ID]);
 	}
 	return $content;
