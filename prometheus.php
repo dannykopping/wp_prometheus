@@ -51,7 +51,7 @@ class Prometheus
     {
         $registry = new CollectorRegistry(new APC());
         $this->postViewCounter = $registry->getOrRegisterCounter('wordpress', 'post_view_count', 'when a post is viewed', ['post_title', 'post_id', 'site']);
-        $this->postCommentCounter = $registry->getOrRegisterCounter('wordpress', 'post_comment_submitted', 'when a comment is submitted', ['post_id', 'status','site']);
+        $this->postCommentCounter = $registry->getOrRegisterCounter('wordpress', 'post_comment_submitted', 'when a comment is submitted', ['post_id', 'status', 'site']);
         $this->postCounter = $registry->getOrRegisterGauge('wordpress', 'post_count', 'count of posts in various statuses', ['status', 'site']);
         $this->onlineUsersCounter = $registry->getOrRegisterGauge('wordpress', 'online_user_count', 'count of users online', ['location']);
 
@@ -67,9 +67,9 @@ class Prometheus
         add_filter('cron_schedules', [$this, 'addShortCronInterval']);
         if (!wp_next_scheduled('metrics_hook')) {
             wp_schedule_event(time(), 'five_seconds', 'metrics_hook');
-	}
-	add_action('init', [$this, 'renderMetrics']);
-	add_action('metrics_hook', [$this, 'getPostStatusesMetric']);
+        }
+        add_action('init', [$this, 'renderMetrics']);
+        add_action('metrics_hook', [$this, 'getPostStatusesMetric']);
     }
 
     function addShortCronInterval($schedules)
@@ -80,7 +80,8 @@ class Prometheus
         return $schedules;
     }
 
-    function getSite() {
+    function getSite()
+    {
         return $_SERVER['HTTP_HOST'];
     }
 
@@ -95,12 +96,12 @@ class Prometheus
         }
 
         $query = new WP_Query(['post_type' => 'any', 'post_status' => 'any']);
-	$statuses = [];
-	$site = $this->getSite();
+        $statuses = [];
+        $site = $this->getSite();
 
         if ($query->have_posts()) {
             foreach ($query->posts as $post) {
-                if(!array_key_exists($post->post_status, $statuses)) {
+                if (!array_key_exists($post->post_status, $statuses)) {
                     $statuses[$post->post_status] = 0;
                 }
 
@@ -108,8 +109,8 @@ class Prometheus
             }
         }
 
-        foreach($statuses as $status => $count) {
-            $this->postCounter->set($count, ['status' => $status, 'site'=> $site]);
+        foreach ($statuses as $status => $count) {
+            $this->postCounter->set($count, ['status' => $status, 'site' => $site]);
         }
     }
 
@@ -117,12 +118,12 @@ class Prometheus
     {
         global $wp_query;
         $post = $wp_query->post;
-	$site = $this->getSite();
+        $site = $this->getSite();
 
-	if (is_single() || is_page()) {
-            $this->postViewCounter->inc(['post_title' => $post->post_title, 'post_id' => $post->ID, 'site'=> $site]);
-	}
-	return $content;
+        if (is_single() || is_page()) {
+            $this->postViewCounter->inc(['post_title' => $post->post_title, 'post_id' => $post->ID, 'site' => $site]);
+        }
+        return $content;
     }
 
     public function processComment(int $commentID, $commentApproved, array $commentData)
@@ -131,21 +132,22 @@ class Prometheus
         if (array_key_exists('comment_post_ID', $commentData)) {
             $postId = $commentData['comment_post_ID'];
         }
-	$site = $this->getSite();
+        $site = $this->getSite();
 
         $this->postCommentCounter->inc(['post_id' => $postId, 'status' => $commentApproved, 'site' => $site]);
     }
 
     public function renderMetrics()
     {
-	$url_path = trim(parse_url(add_query_arg(array()), PHP_URL_PATH), '/');
-	if ($url_path == "metrics") {
-	    header("Content-type: text/plain");
+        $url_path = trim(parse_url(add_query_arg(array()), PHP_URL_PATH), '/');
+        if ($url_path == "metrics") {
+            header("Content-type: text/plain");
             $renderer = new RenderTextFormat();
-	    echo $renderer->render(static::getInstance()->registry->getMetricFamilySamples());
-	    exit();
+            echo $renderer->render(static::getInstance()->registry->getMetricFamilySamples());
+            exit();
         }
     }
 }
+
 // init
 Prometheus::getInstance();
