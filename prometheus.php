@@ -25,6 +25,7 @@ class Prometheus
     protected Counter $postViewCounter;
     protected Counter $postCommentCounter;
     protected Gauge $postCounter;
+    protected Gauge $onlineUsersCounter;
 
     public function __construct()
     {
@@ -52,6 +53,7 @@ class Prometheus
         $this->postViewCounter = $registry->getOrRegisterCounter('wordpress', 'post_view_count', 'when a post is viewed', ['post_title', 'post_id', 'site']);
         $this->postCommentCounter = $registry->getOrRegisterCounter('wordpress', 'post_comment_submitted', 'when a comment is submitted', ['post_id', 'status','site']);
         $this->postCounter = $registry->getOrRegisterGauge('wordpress', 'post_count', 'count of posts in various statuses', ['status', 'site']);
+        $this->onlineUsersCounter = $registry->getOrRegisterGauge('wordpress', 'online_user_count', 'count of users online', ['location']);
 
         return $registry;
     }
@@ -84,6 +86,14 @@ class Prometheus
 
     function getPostStatusesMetric()
     {
+        if (function_exists('wp_statistics_useronline')) {
+            $onlineUsers = wp_statistics_useronline(['return' => 'all']);
+            $locations = array_count_values(array_column($onlineUsers, 'location'));
+            foreach ($locations as $location => $count) {
+                $this->onlineUsersCounter->set($count, ['location' => $location]);
+            }
+        }
+
         $query = new WP_Query(['post_type' => 'any', 'post_status' => 'any']);
 	$statuses = [];
 	$site = $this->getSite();
