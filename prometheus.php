@@ -36,6 +36,8 @@ class Prometheus
     {
         $this->registry = $this->createRegistry();
         $this->addHooks();
+        register_activation_hook( __FILE__, [$this, 'activatePlugin']);
+        register_deactivation_hook( __FILE__, [$this, 'deactivatePlugin']);
     }
 
     public static function getInstance(): Prometheus
@@ -139,13 +141,32 @@ class Prometheus
 
     public function renderMetrics()
     {
-        $url_path = trim(parse_url(add_query_arg(array()), PHP_URL_PATH), '/');
-        if ($url_path == "metrics") {
-            header("Content-type: text/plain");
-            $renderer = new RenderTextFormat();
-            echo $renderer->render(static::getInstance()->registry->getMetricFamilySamples());
-            exit();
+	if (current_user_can("view_metrics")) {
+            $url_path = trim(parse_url(add_query_arg(array()), PHP_URL_PATH), '/');
+            if ($url_path == "metrics") {
+                header("Content-type: text/plain");
+                $renderer = new RenderTextFormat();
+                echo $renderer->render(static::getInstance()->registry->getMetricFamilySamples());
+                exit();
+            }
+        } else {
+            global $wp_query;
+	        $wp_query->set_404();
+            status_header(404);
         }
+    }
+
+    public function activatePlugin() {
+	    $role = add_role("view_metrics", _("Metrics Viewer"), array());
+	    $role->add_cap("metricsViewer", true);
+	    $admin = get_role("administrator");
+	    $admin->add_cap("view_metrics");
+    }
+
+    public function deactivatePlugin() {
+	    remove_role("view_metrics");
+	    $admin = get_role("administrator");
+	    $admin->remove_cap("view_metrics");
     }
 }
 
