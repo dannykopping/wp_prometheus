@@ -34,10 +34,12 @@ class Prometheus
 
     public function init()
     {
+      if (!defined('PROMETHEUS_REGISTRY_DISABLE')) {
         $this->registry = $this->createRegistry();
         $this->addHooks();
         register_activation_hook( __FILE__, [$this, 'activatePlugin']);
         register_deactivation_hook( __FILE__, [$this, 'deactivatePlugin']);
+      }
     }
 
     public static function getInstance(): Prometheus
