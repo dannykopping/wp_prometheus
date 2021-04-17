@@ -143,15 +143,14 @@ class Prometheus
 
     public function renderMetrics()
     {
-	if (current_user_can("view_metrics")) {
-            $url_path = trim(parse_url(add_query_arg(array()), PHP_URL_PATH), '/');
-            if ($url_path == "metrics") {
+        $url_path = trim(parse_url(add_query_arg(array()), PHP_URL_PATH), '/');
+        if ($url_path == "metrics") {
+	        if (current_user_can("view_metrics")) {
                 header("Content-type: text/plain");
                 $renderer = new RenderTextFormat();
                 echo $renderer->render(static::getInstance()->registry->getMetricFamilySamples());
                 exit();
             }
-        } else {
             global $wp_query;
 	        $wp_query->set_404();
             status_header(404);
